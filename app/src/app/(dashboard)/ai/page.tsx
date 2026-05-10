@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ChartCard } from '@/components/ui/chart-card';
-import { Send, Bot, User, Sparkles, Copy, Download, BarChart3, Table2, Lightbulb, TrendingUp, AlertTriangle, CheckCircle2, Zap } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Copy, Download, BarChart3, Table2, Lightbulb, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { autoInsights } from '@/data/mock/phase-completion';
 import { downloadCSV } from '@/lib/download';
@@ -12,8 +11,9 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   sql?: string;
-  table?: { headers: string[]; rows: string[][] };
+  table?: { headers: string[]; rows: (string | number)[][] };
   chartSuggestion?: string;
+  downloadUrl?: string;
   timestamp: Date;
 }
 
@@ -27,6 +27,19 @@ const suggestedQuestions = [
   'Buat chart bubble GMV vs order count by Area Manager.',
   'Download semua order GT milik Riky Marojahan Hasibuan.',
 ];
+
+function createUserMessage(question: string): ChatMessage {
+  return {
+    id: Date.now().toString(),
+    role: 'user',
+    content: question,
+    timestamp: new Date(),
+  };
+}
+
+function createAssistantMessageId() {
+  return `assistant-${Date.now()}`;
+}
 
 function getSimulatedResponse(question: string): ChatMessage {
   const q = question.toLowerCase();
@@ -106,27 +119,46 @@ export default function AIChatbotPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = (text?: string) => {
+  const handleSend = async (text?: string) => {
     const question = text || input.trim();
     if (!question) return;
 
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: question,
-      timestamp: new Date(),
-    };
+    const userMsg = createUserMessage(question);
 
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response delay
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/ai/ask', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ question }),
+      });
+      const payload = await response.json();
+      if (!payload.ok) throw new Error(payload.error?.message ?? 'AI query failed');
+      const assistantMessage: ChatMessage = {
+        id: createAssistantMessageId(),
+        role: 'assistant',
+        content: payload.data.answer,
+        sql: payload.data.generatedSql,
+        table: payload.data.table ?? undefined,
+        chartSuggestion: payload.data.chartSuggestion
+          ? `${payload.data.chartSuggestion.type} chart - ${payload.data.chartSuggestion.dimension} / ${payload.data.chartSuggestion.metric}`
+          : undefined,
+        downloadUrl: payload.data.downloadUrl ?? undefined,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch {
       const response = getSimulatedResponse(question);
-      setMessages((prev) => [...prev, response]);
+      setMessages((prev) => [...prev, {
+        ...response,
+        content: `${response.content}\n\nNote: live AI API was unavailable, so this fallback uses the PRD sample metric dictionary.`,
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 800 + Math.random() * 1200);
+    }
   };
 
   const handleDownload = (msg: ChatMessage) => {
@@ -262,6 +294,16 @@ export default function AIChatbotPage() {
                     <BarChart3 className="h-3.5 w-3.5 text-primary" />
                     <span className="text-xs text-primary">{msg.chartSuggestion}</span>
                   </div>
+                )}
+
+                {msg.downloadUrl && (
+                  <a
+                    href={msg.downloadUrl}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Download cleaned dataset
+                  </a>
                 )}
 
                 {/* Action buttons for assistant messages */}

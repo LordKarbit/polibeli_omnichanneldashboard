@@ -293,7 +293,7 @@ function getRefundWaterfallOption(): EChartsOption {
         type: 'bar',
         stack: 'waterfall',
         barWidth: '40%',
-        label: { show: true, position: 'top', color: 'rgba(255,255,255,0.7)', fontSize: 10, formatter: (p: { value: number }) => abbreviateIDR(p.value) },
+        label: { show: true, position: 'top', color: 'rgba(255,255,255,0.7)', fontSize: 10, formatter: (p: { value?: unknown }) => abbreviateIDR(Number(p.value ?? 0)) },
         data: [
           { value: w.grossGMV, itemStyle: { color: chartColors.primary[1], borderRadius: [4, 4, 0, 0] } },
           { value: w.discount, itemStyle: { color: '#f59e0b', borderRadius: [4, 4, 0, 0] } },

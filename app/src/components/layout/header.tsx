@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
   '/': { title: 'Executive Overview', subtitle: 'Omnichannel sales performance at a glance' },
-  '/gt': { title: 'GT Performance', subtitle: 'General Trade — Regional & Area Manager analytics' },
+  '/gt': { title: 'GT Performance', subtitle: 'General Trade - sales, area manager, and customer retention analytics' },
   '/mt': { title: 'MT / Agency', subtitle: 'Modern Trade — bulk order & agency performance' },
   '/marketplace': { title: 'Marketplace', subtitle: 'Shopee, TikTok Shop (Kayou ID) & (Kayou Card ID) comparison' },
   '/sku': { title: 'SKU & Product', subtitle: 'Product performance across all channels' },
@@ -25,15 +25,15 @@ export function Header() {
   const page = pageTitles[pathname] ?? { title: 'Dashboard', subtitle: '' };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-md">
+    <header className="sticky top-0 z-30 flex h-16 min-w-0 shrink-0 items-center justify-between gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md sm:px-6">
       {/* Left: Page title */}
-      <div className="flex flex-col">
-        <h1 className="text-base font-semibold text-foreground">{page.title}</h1>
-        <p className="text-xs text-muted-foreground">{page.subtitle}</p>
+      <div className="min-w-0 flex-1 pl-14 lg:pl-0">
+        <h1 className="truncate text-base font-semibold text-foreground">{page.title}</h1>
+        <p className="truncate text-xs text-muted-foreground">{page.subtitle}</p>
       </div>
 
       {/* Right: Controls */}
-      <div className="flex items-center gap-4">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-4">
         {/* Period badge */}
         <div className="hidden items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-1.5 md:flex">
           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />

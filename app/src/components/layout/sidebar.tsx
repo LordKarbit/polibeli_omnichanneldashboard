@@ -16,12 +16,11 @@ import {
   MessageSquareText,
   ChevronLeft,
   ChevronRight,
-  Zap,
   Menu,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const navItems = [
   { href: '/', label: 'Executive Overview', icon: LayoutDashboard },
@@ -41,10 +40,18 @@ export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const previousPathname = useRef(pathname);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--dashboard-sidebar-width', collapsed ? '68px' : '240px');
+  }, [collapsed]);
 
   // Close mobile sidebar on route change
   useEffect(() => {
-    setMobileOpen(false);
+    if (previousPathname.current !== pathname) {
+      previousPathname.current = pathname;
+      setMobileOpen(false);
+    }
   }, [pathname]);
 
   // Close mobile sidebar on window resize to desktop
@@ -60,10 +67,7 @@ export function Sidebar() {
     <>
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-border px-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-400">
-          <Zap className="h-5 w-5 text-white" />
-        </div>
-        {!collapsed && (
+        {(!collapsed || mobileOpen) && (
           <div className="flex flex-col overflow-hidden">
             <span className="text-sm font-bold tracking-tight text-foreground">Omni Dashboard</span>
             <span className="text-[10px] text-muted-foreground">Sales Analytics</span>
@@ -110,6 +114,7 @@ export function Sidebar() {
       <div className="hidden border-t border-border p-3 lg:block">
         <button
           onClick={() => setCollapsed(!collapsed)}
+          aria-expanded={!collapsed}
           className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}

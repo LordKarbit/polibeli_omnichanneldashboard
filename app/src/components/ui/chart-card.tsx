@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Download, Maximize2, Minimize2 } from 'lucide-react';
 import { downloadCSV } from '@/lib/download';
@@ -10,11 +10,12 @@ interface ChartCardProps {
   subtitle?: string;
   children: React.ReactNode;
   className?: string;
+  contentClassName?: string;
   action?: React.ReactNode;
   onDownload?: () => void;
 }
 
-export function ChartCard({ title, subtitle, children, className, action, onDownload }: ChartCardProps) {
+export function ChartCard({ title, subtitle, children, className, contentClassName, action, onDownload }: ChartCardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -69,43 +70,46 @@ export function ChartCard({ title, subtitle, children, className, action, onDown
     }
   };
 
-  // Listen for fullscreen change to update state
-  if (typeof window !== 'undefined') {
-    document.onfullscreenchange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === containerRef.current);
     };
-  }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   return (
     <div
       ref={containerRef}
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 hover:border-primary/10',
-        isFullscreen ? 'fixed inset-0 z-50 rounded-none w-screen h-screen m-0' : '',
+        'group relative min-w-0 overflow-hidden rounded-[8px] border border-border bg-card shadow-sm shadow-black/10 transition-all duration-300 hover:border-primary/15',
+        'flex flex-col',
+        isFullscreen ? 'fixed inset-0 z-50 m-0 h-screen w-screen rounded-none' : '',
         className
       )}
     >
       {/* Header */}
-      <div className="flex items-start justify-between border-b border-border px-5 py-4 shrink-0">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <div className="flex shrink-0 flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-4">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold leading-5 text-foreground">{title}</h3>
           {subtitle && (
-            <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{subtitle}</p>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {action}
+        <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
+          {action ? <div className="min-w-0 flex-1 sm:flex-none">{action}</div> : null}
           <button 
             onClick={handleDownload}
             title="Export to PNG/CSV"
-            className="rounded-md p-1.5 text-muted-foreground opacity-0 transition-all hover:bg-accent hover:text-foreground group-hover:opacity-100"
+            className="rounded-md p-1.5 text-muted-foreground opacity-100 transition-all hover:bg-accent hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"
           >
             <Download className="h-3.5 w-3.5" />
           </button>
           <button 
             onClick={toggleFullscreen}
             title={isFullscreen ? "Exit Fullscreen" : "Maximize"}
-            className="rounded-md p-1.5 text-muted-foreground opacity-0 transition-all hover:bg-accent hover:text-foreground group-hover:opacity-100"
+            className="rounded-md p-1.5 text-muted-foreground opacity-100 transition-all hover:bg-accent hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"
           >
             {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
           </button>
@@ -114,8 +118,9 @@ export function ChartCard({ title, subtitle, children, className, action, onDown
 
       {/* Body */}
       <div className={cn(
-        "p-5 flex-1 overflow-auto",
-        isFullscreen ? "flex items-center justify-center p-8 [&>div]:h-full [&>div]:w-full" : ""
+        "flex-1 overflow-auto p-4 sm:p-5",
+        isFullscreen ? "flex items-center justify-center p-4 sm:p-8 [&>div]:h-full [&>div]:w-full" : "",
+        contentClassName,
       )}>
         {children}
       </div>

@@ -1,5 +1,3 @@
-import type { SKUPerformance, MarketplacePerformance, MarketplaceSKU, DailyGMV } from './types';
-
 // GT Heatmap: Region × SKU data
 export const gtRegionSKUHeatmap = [
   { region: 'Riky Marojahan H.', sku: 'MLBB OOL', gmv: 12_400_000 },

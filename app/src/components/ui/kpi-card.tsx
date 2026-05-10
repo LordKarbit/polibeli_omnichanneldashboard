@@ -20,23 +20,23 @@ export function KPICard({ label, value, change, changeLabel, icon, className }: 
   return (
     <div
       className={cn(
-        'group relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all duration-300 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5',
+        'group relative min-w-0 overflow-hidden rounded-[8px] border border-border bg-card p-4 shadow-sm shadow-black/10 transition-all duration-300 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 sm:p-5',
         className
       )}
     >
       {/* Gradient accent line at top */}
       <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-indigo-500 via-cyan-400 to-purple-500 opacity-0 transition-opacity group-hover:opacity-100" />
 
-      <div className="flex items-start justify-between">
-        <div className="flex-1 space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-2">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs">
             {label}
           </p>
-          <p className="text-2xl font-bold tracking-tight text-foreground">
+          <p className="break-words text-xl font-bold leading-tight tracking-tight text-foreground sm:text-2xl">
             {value}
           </p>
           {change !== undefined && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <div
                 className={cn(
                   'flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-xs font-semibold',
@@ -53,13 +53,13 @@ export function KPICard({ label, value, change, changeLabel, icon, className }: 
                 {change > 0 ? '+' : ''}{change}%
               </div>
               {changeLabel && (
-                <span className="text-[10px] text-muted-foreground">{changeLabel}</span>
+                <span className="text-[10px] leading-4 text-muted-foreground">{changeLabel}</span>
               )}
             </div>
           )}
         </div>
         {icon && (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary transition-colors group-hover:bg-primary/15 sm:h-10 sm:w-10">
             {icon}
           </div>
         )}

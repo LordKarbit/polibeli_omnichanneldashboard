@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
 import { BarChart, LineChart, PieChart, ScatterChart, TreemapChart, FunnelChart, HeatmapChart, CustomChart } from 'echarts/charts';
@@ -39,11 +39,13 @@ interface EChartProps {
   option: EChartsOption;
   style?: React.CSSProperties;
   className?: string;
+  onClick?: (params: unknown) => void;
 }
 
-export function EChart({ option, style, className }: EChartProps) {
+export function EChart({ option, style, className, onClick }: EChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const instanceRef = useRef<echarts.ECharts | null>(null);
+  const [isFullscreenChart, setIsFullscreenChart] = useState(false);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -54,6 +56,10 @@ export function EChart({ option, style, className }: EChartProps) {
     }
 
     instanceRef.current.setOption(option, true);
+    instanceRef.current.off('click');
+    if (onClick) {
+      instanceRef.current.on('click', onClick);
+    }
 
     // Resize observer
     const observer = new ResizeObserver(() => {
@@ -64,7 +70,7 @@ export function EChart({ option, style, className }: EChartProps) {
     return () => {
       observer.disconnect();
     };
-  }, [option]);
+  }, [option, onClick]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -74,10 +80,29 @@ export function EChart({ option, style, className }: EChartProps) {
     };
   }, []);
 
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      setIsFullscreenChart(
+        Boolean(chartRef.current && document.fullscreenElement?.contains(chartRef.current)),
+      );
+      window.requestAnimationFrame(() => instanceRef.current?.resize());
+    };
+
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    syncFullscreenState();
+
+    return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
+  }, []);
+
   return (
     <div
       ref={chartRef}
-      style={{ width: '100%', height: 320, ...style }}
+      style={{
+        width: '100%',
+        height: 320,
+        ...style,
+        ...(isFullscreenChart ? { height: '100%', minHeight: 0 } : {}),
+      }}
       className={className}
     />
   );

@@ -8,10 +8,14 @@ import { duplicateOrders, zeroValueItems, schemaMismatches } from '@/data/mock/p
 import { mergeChartOptions } from '@/lib/chart-config';
 import { ShieldCheck, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import type { EChartsOption } from 'echarts';
+import { useDashboardData } from '@/lib/dashboard-client';
+
+type QualityMetric = { category: string; count: number; severity: 'error' | 'warning' | 'info'; description: string };
+type QualitySummary = { totalRows: number; validPercent: number; criticalIssues: number; warningIssues: number; infoIssues?: number };
 
 // Issues by category bar
-function getIssuesBarOption(): EChartsOption {
-  const sorted = [...dataQualityMetrics].sort((a, b) => b.count - a.count);
+function getIssuesBarOption(metrics: QualityMetric[]): EChartsOption {
+  const sorted = [...metrics].sort((a, b) => b.count - a.count);
   const severityColors: Record<string, string> = {
     error: '#ef4444',
     warning: '#f59e0b',
@@ -54,7 +58,7 @@ function getIssuesBarOption(): EChartsOption {
 }
 
 // Severity donut
-function getSeverityDonutOption(): EChartsOption {
+function getSeverityDonutOption(summary: QualitySummary): EChartsOption {
   return mergeChartOptions({
     tooltip: { trigger: 'item' },
     legend: {
@@ -72,9 +76,9 @@ function getSeverityDonutOption(): EChartsOption {
           label: { show: true, fontSize: 13, fontWeight: 'bold' },
         },
         data: [
-          { value: dataQualitySummary.criticalIssues, name: 'Critical', itemStyle: { color: '#ef4444' } },
-          { value: dataQualitySummary.warningIssues, name: 'Warning', itemStyle: { color: '#f59e0b' } },
-          { value: dataQualitySummary.infoIssues, name: 'Info', itemStyle: { color: '#3b82f6' } },
+          { value: summary.criticalIssues, name: 'Critical', itemStyle: { color: '#ef4444' } },
+          { value: summary.warningIssues, name: 'Warning', itemStyle: { color: '#f59e0b' } },
+          { value: summary.infoIssues ?? 0, name: 'Info', itemStyle: { color: '#3b82f6' } },
         ],
       },
     ],
@@ -82,30 +86,44 @@ function getSeverityDonutOption(): EChartsOption {
 }
 
 export default function DataQualityPage() {
+  const { data } = useDashboardData();
+  const summary = data?.dataQuality
+    ? {
+        totalRows: data.dataQuality.totalRows,
+        validPercent: data.dataQuality.validPercent,
+        criticalIssues: data.dataQuality.criticalIssues,
+        warningIssues: data.dataQuality.warningIssues,
+        infoIssues: data.dataQuality.infoIssues,
+      }
+    : dataQualitySummary;
+  const metrics = data?.dataQuality?.metrics ?? dataQualityMetrics;
+  const zeroItems = data?.dataQuality?.zeroValueItems ?? zeroValueItems;
+  const schemaIssues = data?.dataQuality?.schemaMismatches ?? schemaMismatches;
+
   return (
     <div className="animate-fade-in-up space-y-6">
       {/* KPI Row */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <KPICard
           label="Total Rows"
-          value={dataQualitySummary.totalRows.toLocaleString('id-ID')}
+          value={summary.totalRows.toLocaleString('id-ID')}
           icon={<ShieldCheck className="h-5 w-5" />}
         />
         <KPICard
           label="Valid Rows"
-          value={`${dataQualitySummary.validPercent}%`}
+          value={`${summary.validPercent}%`}
           change={0.3}
           changeLabel="improvement"
           icon={<CheckCircle2 className="h-5 w-5" />}
         />
         <KPICard
           label="Critical Issues"
-          value={dataQualitySummary.criticalIssues.toString()}
+          value={summary.criticalIssues.toString()}
           icon={<XCircle className="h-5 w-5" />}
         />
         <KPICard
           label="Warnings"
-          value={dataQualitySummary.warningIssues.toString()}
+          value={summary.warningIssues.toString()}
           icon={<AlertTriangle className="h-5 w-5" />}
         />
       </div>
@@ -117,7 +135,7 @@ export default function DataQualityPage() {
           subtitle="Count per data quality rule"
           className="lg:col-span-3"
         >
-          <EChart option={getIssuesBarOption()} style={{ height: 350 }} />
+          <EChart option={getIssuesBarOption(metrics)} style={{ height: 350 }} />
         </ChartCard>
 
         <ChartCard
@@ -125,7 +143,7 @@ export default function DataQualityPage() {
           subtitle="Critical vs Warning vs Info"
           className="lg:col-span-2"
         >
-          <EChart option={getSeverityDonutOption()} style={{ height: 350 }} />
+          <EChart option={getSeverityDonutOption(summary)} style={{ height: 350 }} />
         </ChartCard>
       </div>
 
@@ -170,7 +188,7 @@ export default function DataQualityPage() {
               </tr>
             </thead>
             <tbody>
-              {zeroValueItems.map((z, i) => (
+              {zeroItems.map((z, i) => (
                 <tr key={`${z.source}-${i}`} className="border-b border-border/50 transition-colors hover:bg-muted/30">
                   <td className="py-3 pr-4 text-xs text-muted-foreground">{z.source}</td>
                   <td className="py-3 pr-4 font-medium text-foreground">{z.productName}</td>
@@ -180,8 +198,8 @@ export default function DataQualityPage() {
               ))}
               <tr className="border-t-2 border-border">
                 <td colSpan={2} className="py-3 pr-4 font-semibold text-foreground">Total Zero-Value Items</td>
-                <td className="py-3 pr-4 text-right font-bold text-amber-500">{zeroValueItems.reduce((s, z) => s + z.count, 0).toLocaleString('id-ID')}</td>
-                <td className="py-3 text-right font-bold text-foreground">{zeroValueItems.reduce((s, z) => s + z.totalQty, 0).toLocaleString('id-ID')}</td>
+                <td className="py-3 pr-4 text-right font-bold text-amber-500">{zeroItems.reduce((s, z) => s + z.count, 0).toLocaleString('id-ID')}</td>
+                <td className="py-3 text-right font-bold text-foreground">{zeroItems.reduce((s, z) => s + z.totalQty, 0).toLocaleString('id-ID')}</td>
               </tr>
             </tbody>
           </table>
@@ -201,7 +219,7 @@ export default function DataQualityPage() {
               </tr>
             </thead>
             <tbody>
-              {schemaMismatches.map((s, i) => (
+              {schemaIssues.map((s, i) => (
                 <tr key={`${s.file}-${s.field}-${i}`} className="border-b border-border/50 transition-colors hover:bg-muted/30">
                   <td className="py-3 pr-4">
                     <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${
@@ -235,7 +253,7 @@ export default function DataQualityPage() {
               </tr>
             </thead>
             <tbody>
-              {dataQualityMetrics.map((metric) => (
+              {metrics.map((metric) => (
                 <tr key={metric.category} className="border-b border-border/50 transition-colors hover:bg-muted/30">
                   <td className="py-3 pr-4">
                     <span

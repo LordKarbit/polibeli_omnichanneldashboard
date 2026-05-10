@@ -6,7 +6,7 @@ export function getBaseChartOptions(): EChartsOption {
   return {
     backgroundColor: 'transparent',
     textStyle: {
-      fontFamily: 'var(--font-geist-sans), Inter, system-ui, sans-serif',
+      fontFamily: 'var(--font-app-sans), Inter, system-ui, sans-serif',
       color: 'rgba(255,255,255,0.7)',
       fontSize: 12,
     },

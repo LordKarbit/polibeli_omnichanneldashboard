@@ -149,7 +149,7 @@ function getWaterfallOption(): EChartsOption {
         type: 'bar',
         stack: 'waterfall',
         barWidth: '40%',
-        label: { show: true, position: 'top', color: 'rgba(255,255,255,0.7)', fontSize: 10, formatter: (p: { value: number }) => abbreviateIDR(p.value) },
+        label: { show: true, position: 'top', color: 'rgba(255,255,255,0.7)', fontSize: 10, formatter: (p: { value?: unknown }) => abbreviateIDR(Number(p.value ?? 0)) },
         data: [
           { value: bookedGMV, itemStyle: { color: chartColors.primary[1], borderRadius: [4, 4, 0, 0] } },
           { value: cancelledGMV, itemStyle: { color: '#ef4444', borderRadius: [4, 4, 0, 0] } },
@@ -259,7 +259,7 @@ export default function OperationsPage() {
               </tr>
             </thead>
             <tbody>
-              {orderStatusDetails.map((s, i) => (
+              {orderStatusDetails.map((s) => (
                 <tr key={`${s.source}-${s.status}`} className="border-b border-border/50 transition-colors hover:bg-muted/30">
                   <td className="py-3 pr-4 text-xs text-muted-foreground">{s.source}</td>
                   <td className="py-3 pr-4">
