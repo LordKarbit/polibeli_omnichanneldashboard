@@ -1,0 +1,57 @@
+﻿# dependencies
+**/node_modules/
+**/.pnp
+**/.pnp.*
+**/.yarn/*
+!**/.yarn/patches
+!**/.yarn/plugins
+!**/.yarn/releases
+!**/.yarn/versions
+
+# Next.js / build output
+**/.next/
+**/out/
+**/build/
+**/.turbo/
+
+# runtime data, uploaded files, databases
+**/data/*.sqlite
+**/data/*.sqlite-*
+**/data/*.db
+**/data/*.db-*
+**/uploads/
+**/tmp/
+**/temp/
+
+# environment and secrets
+**/.env
+**/.env.*
+!.env.example
+
+# logs and local process output
+**/*.log
+**/*.out.log
+**/*.err.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local OS/editor noise
+.DS_Store
+Thumbs.db
+*.pem
+*.tsbuildinfo
+app/next-env.d.ts
+
+# large/private source datasets used only for local QA
+VILLAGE-SUB-DISTRICT BOUNDARIES.kml
+dashboard PRD.md
+*.xlsx
+*.xls
+*.csv
+*.tsv
+
+# local agent/workspace metadata
+app/AGENTS.md
+app/CLAUDE.md
