@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const result = await db.run(sql`select 1 as ok`);
+    const result = await db.execute(sql`select 1 as ok`);
     return ok({
       status: "healthy",
       database: result ? "connected" : "unknown",

@@ -1,30 +1,34 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  boolean,
+  doublePrecision,
   index,
   integer,
+  jsonb,
+  pgTable,
   primaryKey,
-  real,
-  sqliteTable,
   text,
+  timestamp,
   uniqueIndex,
-} from "drizzle-orm/sqlite-core";
+} from "drizzle-orm/pg-core";
 
 const createId = () => randomUUID();
 const now = () => new Date();
 
 const id = text("id").primaryKey().$defaultFn(createId);
-const createdAt = integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(now);
-const updatedAt = integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(now);
-const jsonText = <T>(name: string) => text(name, { mode: "json" }).$type<T>();
+const timestampTz = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
+const createdAt = timestampTz("created_at").notNull().$defaultFn(now);
+const updatedAt = timestampTz("updated_at").notNull().$defaultFn(now);
+const jsonColumn = <T>(name: string) => jsonb(name).$type<T>();
 
-export const user = sqliteTable(
+export const user = pgTable(
   "user",
   {
     id,
     name: text("name").notNull(),
     email: text("email").notNull().unique(),
-    emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+    emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
     role: text("role").notNull().default("viewer"),
     createdAt,
@@ -35,17 +39,17 @@ export const user = sqliteTable(
   ],
 );
 
-export const rolePermissions = sqliteTable("role_permissions", {
+export const rolePermissions = pgTable("role_permissions", {
   role: text("role").primaryKey(),
-  permissions: jsonText<Record<string, boolean>>("permissions").notNull(),
+  permissions: jsonColumn<Record<string, boolean>>("permissions").notNull(),
   updatedAt,
 });
 
-export const session = sqliteTable(
+export const session = pgTable(
   "session",
   {
     id,
-    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    expiresAt: timestampTz("expires_at").notNull(),
     token: text("token").notNull().unique(),
     createdAt,
     updatedAt,
@@ -60,7 +64,7 @@ export const session = sqliteTable(
   ],
 );
 
-export const account = sqliteTable(
+export const account = pgTable(
   "account",
   {
     id,
@@ -72,8 +76,8 @@ export const account = sqliteTable(
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
-    accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp_ms" }),
-    refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp_ms" }),
+    accessTokenExpiresAt: timestampTz("access_token_expires_at"),
+    refreshTokenExpiresAt: timestampTz("refresh_token_expires_at"),
     scope: text("scope"),
     password: text("password"),
     createdAt,
@@ -85,13 +89,13 @@ export const account = sqliteTable(
   ],
 );
 
-export const verification = sqliteTable(
+export const verification = pgTable(
   "verification",
   {
     id,
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
-    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    expiresAt: timestampTz("expires_at").notNull(),
     createdAt,
     updatedAt,
   },
@@ -100,20 +104,20 @@ export const verification = sqliteTable(
   ],
 );
 
-export const uploadBatches = sqliteTable(
+export const uploadBatches = pgTable(
   "upload_batches",
   {
     id,
     uploadedByUserId: text("uploaded_by_user_id").references(() => user.id, { onDelete: "set null" }),
     uploadContext: text("upload_context").notNull().default("omnichannel_dashboard"),
-    periodStart: integer("period_start", { mode: "timestamp_ms" }),
-    periodEnd: integer("period_end", { mode: "timestamp_ms" }),
+    periodStart: timestampTz("period_start"),
+    periodEnd: timestampTz("period_end"),
     processingStatus: text("processing_status").notNull().default("uploaded"),
     totalFiles: integer("total_files").notNull().default(0),
     totalRawRows: integer("total_raw_rows").notNull().default(0),
     totalNormalizedOrders: integer("total_normalized_orders").notNull().default(0),
     totalNormalizedItems: integer("total_normalized_items").notNull().default(0),
-    validationSummary: jsonText<Record<string, unknown> | null>("validation_summary"),
+    validationSummary: jsonColumn<Record<string, unknown> | null>("validation_summary"),
     notes: text("notes"),
     createdAt,
     updatedAt,
@@ -124,7 +128,7 @@ export const uploadBatches = sqliteTable(
   ],
 );
 
-export const rawUploadedFiles = sqliteTable(
+export const rawUploadedFiles = pgTable(
   "raw_uploaded_files",
   {
     id,
@@ -141,7 +145,7 @@ export const rawUploadedFiles = sqliteTable(
     fileSizeBytes: integer("file_size_bytes").notNull().default(0),
     rowCount: integer("row_count").notNull().default(0),
     columnCount: integer("column_count").notNull().default(0),
-    schemaDetected: jsonText<Record<string, unknown> | null>("schema_detected"),
+    schemaDetected: jsonColumn<Record<string, unknown> | null>("schema_detected"),
     parsingStatus: text("parsing_status").notNull().default("pending"),
     createdAt,
     updatedAt,
@@ -153,7 +157,7 @@ export const rawUploadedFiles = sqliteTable(
   ],
 );
 
-export const rawOrderLines = sqliteTable(
+export const rawOrderLines = pgTable(
   "raw_order_lines",
   {
     id,
@@ -164,12 +168,12 @@ export const rawOrderLines = sqliteTable(
       .notNull()
       .references(() => uploadBatches.id, { onDelete: "cascade" }),
     rowNumber: integer("row_number").notNull(),
-    rawPayload: jsonText<Record<string, unknown>>("raw_payload").notNull(),
+    rawPayload: jsonColumn<Record<string, unknown>>("raw_payload").notNull(),
     rowHash: text("row_hash").notNull(),
     sourceOrderId: text("source_order_id"),
     sourceSkuCode: text("source_sku_code"),
     validationStatus: text("validation_status").notNull().default("pending"),
-    validationErrors: jsonText<Record<string, unknown> | null>("validation_errors"),
+    validationErrors: jsonColumn<Record<string, unknown> | null>("validation_errors"),
     createdAt,
   },
   (table) => [
@@ -180,15 +184,15 @@ export const rawOrderLines = sqliteTable(
   ],
 );
 
-export const channels = sqliteTable(
+export const channels = pgTable(
   "channels",
   {
     id,
     channelGroup: text("channel_group").notNull(),
     channelName: text("channel_name").notNull(),
     channelType: text("channel_type").notNull(),
-    isMarketplace: integer("is_marketplace", { mode: "boolean" }).notNull().default(false),
-    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    isMarketplace: boolean("is_marketplace").notNull().default(false),
+    isActive: boolean("is_active").notNull().default(true),
     createdAt,
     updatedAt,
   },
@@ -197,7 +201,7 @@ export const channels = sqliteTable(
   ],
 );
 
-export const platforms = sqliteTable(
+export const platforms = pgTable(
   "platforms",
   {
     id,
@@ -206,7 +210,7 @@ export const platforms = sqliteTable(
     shopAccount: text("shop_account").notNull(),
     marketplaceCode: text("marketplace_code"),
     defaultChannelId: text("default_channel_id").references(() => channels.id, { onDelete: "set null" }),
-    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    isActive: boolean("is_active").notNull().default(true),
     createdAt,
     updatedAt,
   },
@@ -215,7 +219,7 @@ export const platforms = sqliteTable(
   ],
 );
 
-export const products = sqliteTable(
+export const products = pgTable(
   "products",
   {
     id,
@@ -231,7 +235,7 @@ export const products = sqliteTable(
     skuType: text("sku_type").notNull().default("paid_product"),
     ipName: text("ip_name"),
     packSize: integer("pack_size"),
-    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    isActive: boolean("is_active").notNull().default(true),
     createdAt,
     updatedAt,
   },
@@ -242,7 +246,7 @@ export const products = sqliteTable(
   ],
 );
 
-export const productAliases = sqliteTable(
+export const productAliases = pgTable(
   "product_aliases",
   {
     id,
@@ -253,7 +257,7 @@ export const productAliases = sqliteTable(
     sourceSkuCode: text("source_sku_code").notNull(),
     sourceProductName: text("source_product_name"),
     sourceVariationName: text("source_variation_name"),
-    aliasConfidence: real("alias_confidence").notNull().default(1),
+    aliasConfidence: doublePrecision("alias_confidence").notNull().default(1),
     normalizationNotes: text("normalization_notes"),
     createdAt,
     updatedAt,
@@ -268,7 +272,7 @@ export const productAliases = sqliteTable(
   ],
 );
 
-export const customers = sqliteTable(
+export const customers = pgTable(
   "customers",
   {
     id,
@@ -289,7 +293,7 @@ export const customers = sqliteTable(
   ],
 );
 
-export const locations = sqliteTable(
+export const locations = pgTable(
   "locations",
   {
     id,
@@ -300,8 +304,8 @@ export const locations = sqliteTable(
     villageRaw: text("village_raw"),
     provinceStandard: text("province_standard"),
     cityStandard: text("city_standard"),
-    latitude: real("latitude"),
-    longitude: real("longitude"),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
     createdAt,
     updatedAt,
   },
@@ -311,7 +315,7 @@ export const locations = sqliteTable(
   ],
 );
 
-export const orderStatuses = sqliteTable(
+export const orderStatuses = pgTable(
   "order_statuses",
   {
     id,
@@ -319,9 +323,9 @@ export const orderStatuses = sqliteTable(
     rawStatus: text("raw_status").notNull(),
     rawSubstatus: text("raw_substatus"),
     normalizedStatus: text("normalized_status").notNull(),
-    isCancelled: integer("is_cancelled", { mode: "boolean" }).notNull().default(false),
-    isCompleted: integer("is_completed", { mode: "boolean" }).notNull().default(false),
-    isActiveGmvEligible: integer("is_active_gmv_eligible", { mode: "boolean" }).notNull().default(true),
+    isCancelled: boolean("is_cancelled").notNull().default(false),
+    isCompleted: boolean("is_completed").notNull().default(false),
+    isActiveGmvEligible: boolean("is_active_gmv_eligible").notNull().default(true),
     createdAt,
     updatedAt,
   },
@@ -331,13 +335,13 @@ export const orderStatuses = sqliteTable(
   ],
 );
 
-export const regionalManagers = sqliteTable(
+export const regionalManagers = pgTable(
   "regional_managers",
   {
     id,
     managerName: text("manager_name").notNull(),
     employeeCode: text("employee_code"),
-    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    isActive: boolean("is_active").notNull().default(true),
     createdAt,
     updatedAt,
   },
@@ -346,15 +350,15 @@ export const regionalManagers = sqliteTable(
   ],
 );
 
-export const areaManagers = sqliteTable(
+export const areaManagers = pgTable(
   "area_managers",
   {
     id,
     regionalManagerId: text("regional_manager_id").references(() => regionalManagers.id, { onDelete: "set null" }),
     managerName: text("manager_name").notNull(),
     employeeCode: text("employee_code"),
-    isAgency: integer("is_agency", { mode: "boolean" }).notNull().default(false),
-    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    isAgency: boolean("is_agency").notNull().default(false),
+    isActive: boolean("is_active").notNull().default(true),
     createdAt,
     updatedAt,
   },
@@ -364,7 +368,7 @@ export const areaManagers = sqliteTable(
   ],
 );
 
-export const salesHierarchy = sqliteTable(
+export const salesHierarchy = pgTable(
   "sales_hierarchy",
   {
     id,
@@ -375,9 +379,9 @@ export const salesHierarchy = sqliteTable(
     bdCity: text("bd_city"),
     bdProvince: text("bd_province"),
     hierarchyKey: text("hierarchy_key").notNull(),
-    isAgency: integer("is_agency", { mode: "boolean" }).notNull().default(false),
-    effectiveFrom: integer("effective_from", { mode: "timestamp_ms" }),
-    effectiveTo: integer("effective_to", { mode: "timestamp_ms" }),
+    isAgency: boolean("is_agency").notNull().default(false),
+    effectiveFrom: timestampTz("effective_from"),
+    effectiveTo: timestampTz("effective_to"),
     createdAt,
     updatedAt,
   },
@@ -388,7 +392,7 @@ export const salesHierarchy = sqliteTable(
   ],
 );
 
-export const normalizedOrders = sqliteTable(
+export const normalizedOrders = pgTable(
   "normalized_orders",
   {
     id,
@@ -404,23 +408,23 @@ export const normalizedOrders = sqliteTable(
     locationId: text("location_id").references(() => locations.id, { onDelete: "set null" }),
     statusId: text("status_id").references(() => orderStatuses.id, { onDelete: "set null" }),
     salesHierarchyId: text("sales_hierarchy_id").references(() => salesHierarchy.id, { onDelete: "set null" }),
-    orderCreatedAt: integer("order_created_at", { mode: "timestamp_ms" }),
-    paidAt: integer("paid_at", { mode: "timestamp_ms" }),
-    shippedAt: integer("shipped_at", { mode: "timestamp_ms" }),
-    deliveredAt: integer("delivered_at", { mode: "timestamp_ms" }),
-    cancelledAt: integer("cancelled_at", { mode: "timestamp_ms" }),
+    orderCreatedAt: timestampTz("order_created_at"),
+    paidAt: timestampTz("paid_at"),
+    shippedAt: timestampTz("shipped_at"),
+    deliveredAt: timestampTz("delivered_at"),
+    cancelledAt: timestampTz("cancelled_at"),
     normalizedStatus: text("normalized_status").notNull().default("pending"),
     channelGroup: text("channel_group").notNull(),
-    bookedOrderGmv: real("booked_order_gmv").notNull().default(0),
-    activeOrderGmv: real("active_order_gmv").notNull().default(0),
-    orderPaidAmount: real("order_paid_amount").notNull().default(0),
-    orderPayableAmount: real("order_payable_amount").notNull().default(0),
-    orderDiscountAmount: real("order_discount_amount").notNull().default(0),
-    orderRefundAmount: real("order_refund_amount").notNull().default(0),
-    shippingFeeAmount: real("shipping_fee_amount").notNull().default(0),
+    bookedOrderGmv: doublePrecision("booked_order_gmv").notNull().default(0),
+    activeOrderGmv: doublePrecision("active_order_gmv").notNull().default(0),
+    orderPaidAmount: doublePrecision("order_paid_amount").notNull().default(0),
+    orderPayableAmount: doublePrecision("order_payable_amount").notNull().default(0),
+    orderDiscountAmount: doublePrecision("order_discount_amount").notNull().default(0),
+    orderRefundAmount: doublePrecision("order_refund_amount").notNull().default(0),
+    shippingFeeAmount: doublePrecision("shipping_fee_amount").notNull().default(0),
     paymentMethod: text("payment_method"),
     dedupeHash: text("dedupe_hash").notNull(),
-    rawOrderSnapshot: jsonText<Record<string, unknown> | null>("raw_order_snapshot"),
+    rawOrderSnapshot: jsonColumn<Record<string, unknown> | null>("raw_order_snapshot"),
     createdAt,
     updatedAt,
   },
@@ -435,7 +439,7 @@ export const normalizedOrders = sqliteTable(
   ],
 );
 
-export const orderItems = sqliteTable(
+export const orderItems = pgTable(
   "order_items",
   {
     id,
@@ -447,22 +451,22 @@ export const orderItems = sqliteTable(
     sourceLineNumber: integer("source_line_number"),
     sourceSkuCode: text("source_sku_code").notNull(),
     sourceProductName: text("source_product_name"),
-    quantity: real("quantity").notNull().default(0),
-    returnedQuantity: real("returned_quantity").notNull().default(0),
-    unitOriginalPrice: real("unit_original_price").notNull().default(0),
-    unitDiscountedPrice: real("unit_discounted_price").notNull().default(0),
-    lineGrossAmount: real("line_gross_amount").notNull().default(0),
-    lineGmv: real("line_gmv").notNull().default(0),
-    lineDiscountAmount: real("line_discount_amount").notNull().default(0),
-    lineSellerDiscountAmount: real("line_seller_discount_amount").notNull().default(0),
-    linePlatformDiscountAmount: real("line_platform_discount_amount").notNull().default(0),
-    lineGrossProfitAmount: real("line_gross_profit_amount").notNull().default(0),
+    quantity: doublePrecision("quantity").notNull().default(0),
+    returnedQuantity: doublePrecision("returned_quantity").notNull().default(0),
+    unitOriginalPrice: doublePrecision("unit_original_price").notNull().default(0),
+    unitDiscountedPrice: doublePrecision("unit_discounted_price").notNull().default(0),
+    lineGrossAmount: doublePrecision("line_gross_amount").notNull().default(0),
+    lineGmv: doublePrecision("line_gmv").notNull().default(0),
+    lineDiscountAmount: doublePrecision("line_discount_amount").notNull().default(0),
+    lineSellerDiscountAmount: doublePrecision("line_seller_discount_amount").notNull().default(0),
+    linePlatformDiscountAmount: doublePrecision("line_platform_discount_amount").notNull().default(0),
+    lineGrossProfitAmount: doublePrecision("line_gross_profit_amount").notNull().default(0),
     skuType: text("sku_type").notNull().default("paid_product"),
-    isFreeItem: integer("is_free_item", { mode: "boolean" }).notNull().default(false),
-    isBundleComponent: integer("is_bundle_component", { mode: "boolean" }).notNull().default(false),
-    isPosm: integer("is_posm", { mode: "boolean" }).notNull().default(false),
+    isFreeItem: boolean("is_free_item").notNull().default(false),
+    isBundleComponent: boolean("is_bundle_component").notNull().default(false),
+    isPosm: boolean("is_posm").notNull().default(false),
     itemDedupeHash: text("item_dedupe_hash").notNull(),
-    rawItemSnapshot: jsonText<Record<string, unknown> | null>("raw_item_snapshot"),
+    rawItemSnapshot: jsonColumn<Record<string, unknown> | null>("raw_item_snapshot"),
     createdAt,
     updatedAt,
   },
@@ -475,7 +479,7 @@ export const orderItems = sqliteTable(
   ],
 );
 
-export const marketplaceOrders = sqliteTable(
+export const marketplaceOrders = pgTable(
   "marketplace_orders",
   {
     id,
@@ -488,11 +492,11 @@ export const marketplaceOrders = sqliteTable(
     fulfillmentStatusRaw: text("fulfillment_status_raw"),
     cancellationReason: text("cancellation_reason"),
     refundStatus: text("refund_status"),
-    refundAmount: real("refund_amount").notNull().default(0),
-    skuGrossSalesAmount: real("sku_gross_sales_amount").notNull().default(0),
-    sellerDiscountAmount: real("seller_discount_amount").notNull().default(0),
-    platformDiscountAmount: real("platform_discount_amount").notNull().default(0),
-    voucherAmount: real("voucher_amount").notNull().default(0),
+    refundAmount: doublePrecision("refund_amount").notNull().default(0),
+    skuGrossSalesAmount: doublePrecision("sku_gross_sales_amount").notNull().default(0),
+    sellerDiscountAmount: doublePrecision("seller_discount_amount").notNull().default(0),
+    platformDiscountAmount: doublePrecision("platform_discount_amount").notNull().default(0),
+    voucherAmount: doublePrecision("voucher_amount").notNull().default(0),
     campaignName: text("campaign_name"),
     logisticsProvider: text("logistics_provider"),
     trackingNumber: text("tracking_number"),
@@ -506,12 +510,12 @@ export const marketplaceOrders = sqliteTable(
   ],
 );
 
-export const metricsSnapshots = sqliteTable(
+export const metricsSnapshots = pgTable(
   "metrics_snapshots",
   {
     id,
     batchId: text("batch_id").references(() => uploadBatches.id, { onDelete: "set null" }),
-    snapshotDate: integer("snapshot_date", { mode: "timestamp_ms" }).notNull(),
+    snapshotDate: timestampTz("snapshot_date").notNull(),
     grain: text("grain").notNull(),
     metricName: text("metric_name").notNull(),
     channelGroup: text("channel_group"),
@@ -524,18 +528,18 @@ export const metricsSnapshots = sqliteTable(
     skuCode: text("sku_code"),
     productName: text("product_name"),
     status: text("status"),
-    bookedGmv: real("booked_gmv").notNull().default(0),
-    activeGmv: real("active_gmv").notNull().default(0),
+    bookedGmv: doublePrecision("booked_gmv").notNull().default(0),
+    activeGmv: doublePrecision("active_gmv").notNull().default(0),
     orderCount: integer("order_count").notNull().default(0),
     activeOrderCount: integer("active_order_count").notNull().default(0),
     lineItemCount: integer("line_item_count").notNull().default(0),
-    quantity: real("quantity").notNull().default(0),
+    quantity: doublePrecision("quantity").notNull().default(0),
     customerCount: integer("customer_count").notNull().default(0),
-    refundAmount: real("refund_amount").notNull().default(0),
-    discountAmount: real("discount_amount").notNull().default(0),
-    cancellationRate: real("cancellation_rate").notNull().default(0),
-    freebieRatio: real("freebie_ratio").notNull().default(0),
-    filterContext: jsonText<Record<string, unknown> | null>("filter_context"),
+    refundAmount: doublePrecision("refund_amount").notNull().default(0),
+    discountAmount: doublePrecision("discount_amount").notNull().default(0),
+    cancellationRate: doublePrecision("cancellation_rate").notNull().default(0),
+    freebieRatio: doublePrecision("freebie_ratio").notNull().default(0),
+    filterContext: jsonColumn<Record<string, unknown> | null>("filter_context"),
     createdAt,
   },
   (table) => [
@@ -545,7 +549,7 @@ export const metricsSnapshots = sqliteTable(
   ],
 );
 
-export const aiQueryLogs = sqliteTable(
+export const aiQueryLogs = pgTable(
   "ai_query_logs",
   {
     id,
@@ -554,9 +558,9 @@ export const aiQueryLogs = sqliteTable(
     question: text("question").notNull(),
     generatedSql: text("generated_sql"),
     safeSqlHash: text("safe_sql_hash"),
-    filterContext: jsonText<Record<string, unknown> | null>("filter_context"),
+    filterContext: jsonColumn<Record<string, unknown> | null>("filter_context"),
     answerSummary: text("answer_summary"),
-    chartSuggestion: jsonText<Record<string, unknown> | null>("chart_suggestion"),
+    chartSuggestion: jsonColumn<Record<string, unknown> | null>("chart_suggestion"),
     resultRowCount: integer("result_row_count").notNull().default(0),
     latencyMs: integer("latency_ms").notNull().default(0),
     status: text("status").notNull().default("logged"),
@@ -570,7 +574,7 @@ export const aiQueryLogs = sqliteTable(
   ],
 );
 
-export const cleanedDatasetExports = sqliteTable(
+export const cleanedDatasetExports = pgTable(
   "cleaned_dataset_exports",
   {
     id,
@@ -578,7 +582,7 @@ export const cleanedDatasetExports = sqliteTable(
     batchId: text("batch_id").references(() => uploadBatches.id, { onDelete: "set null" }),
     exportType: text("export_type").notNull(),
     fileName: text("file_name").notNull(),
-    filterContext: jsonText<Record<string, unknown> | null>("filter_context"),
+    filterContext: jsonColumn<Record<string, unknown> | null>("filter_context"),
     rowCount: integer("row_count").notNull().default(0),
     createdAt,
   },
@@ -588,7 +592,7 @@ export const cleanedDatasetExports = sqliteTable(
   ],
 );
 
-export const sourceFieldMappings = sqliteTable(
+export const sourceFieldMappings = pgTable(
   "source_field_mappings",
   {
     id,
@@ -597,7 +601,7 @@ export const sourceFieldMappings = sqliteTable(
     sourceField: text("source_field").notNull(),
     normalizedField: text("normalized_field").notNull(),
     ruleDescription: text("rule_description"),
-    isRequired: integer("is_required", { mode: "boolean" }).notNull().default(false),
+    isRequired: boolean("is_required").notNull().default(false),
     createdAt,
     updatedAt,
   },
@@ -606,7 +610,7 @@ export const sourceFieldMappings = sqliteTable(
   ],
 );
 
-export const dedupeKeys = sqliteTable(
+export const dedupeKeys = pgTable(
   "dedupe_keys",
   {
     scope: text("scope").notNull(),

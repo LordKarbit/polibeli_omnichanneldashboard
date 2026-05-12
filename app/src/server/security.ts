@@ -17,7 +17,7 @@ import {
 } from "@/lib/rbac";
 import { auth, type AuthSession } from "@/server/auth";
 import { badRequest, forbidden, unauthorized } from "@/server/api/http";
-import { db, sqliteClient } from "@/server/db";
+import { db } from "@/server/db";
 import { rolePermissions } from "@/server/db/schema";
 
 export type AppSession = AuthSession & {
@@ -52,24 +52,16 @@ function isPermissionKey(value: string): value is PermissionKey {
 async function ensureRbacTable() {
   if (!rbacTableReady) {
     rbacTableReady = (async () => {
-      await sqliteClient.execute(`
-        create table if not exists role_permissions (
-          role text primary key not null,
-          permissions text not null,
-          updated_at integer not null
+      await db
+        .insert(rolePermissions)
+        .values(
+          Object.entries(defaultRolePermissions).map(([role, permissions]) => ({
+            role,
+            permissions,
+            updatedAt: new Date(),
+          })),
         )
-      `);
-
-      for (const [role, permissions] of Object.entries(defaultRolePermissions)) {
-        await sqliteClient.execute({
-          sql: `
-            insert into role_permissions (role, permissions, updated_at)
-            values (?, ?, ?)
-            on conflict(role) do nothing
-          `,
-          args: [role, JSON.stringify(permissions), Date.now()],
-        });
-      }
+        .onConflictDoNothing();
     })();
   }
 
@@ -153,14 +145,20 @@ export async function setRolePermissions(role: AppRole, permissions: Partial<Rec
   ) as Partial<Record<PermissionKey, boolean>>;
   const merged = mergeRolePermissions(role, sanitized);
 
-  await sqliteClient.execute({
-    sql: `
-      insert into role_permissions (role, permissions, updated_at)
-      values (?, ?, ?)
-      on conflict(role) do update set permissions = excluded.permissions, updated_at = excluded.updated_at
-    `,
-    args: [role, JSON.stringify(merged), Date.now()],
-  });
+  await db
+    .insert(rolePermissions)
+    .values({
+      role,
+      permissions: merged,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: rolePermissions.role,
+      set: {
+        permissions: merged,
+        updatedAt: new Date(),
+      },
+    });
 
   return merged;
 }

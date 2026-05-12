@@ -1,28 +1,13 @@
-import { mkdir, readFile, rm } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { afterAll } from "vitest";
+import { migrate } from "drizzle-orm/pglite/migrator";
 
-import { createClient } from "@libsql/client";
+process.env.DATABASE_URL = "pglite://memory";
+process.env.BETTER_AUTH_SECRET = "test-only-omnichannel-dashboard";
 
-const testDatabasePath = join(process.cwd(), "data", "test-omnichannel.sqlite");
+const { closeDatabaseConnection, db } = await import("@/server/db");
 
-process.env.DATABASE_URL = `file:${testDatabasePath}`;
+await migrate(db as never, { migrationsFolder: "drizzle" });
 
-async function applyMigrations() {
-  await mkdir(dirname(testDatabasePath), { recursive: true });
-  await rm(testDatabasePath, { force: true });
-
-  const client = createClient({ url: process.env.DATABASE_URL! });
-  const migrationSql = await readFile(join(process.cwd(), "drizzle", "0000_married_quicksilver.sql"), "utf8");
-  const statements = migrationSql
-    .split("--> statement-breakpoint")
-    .map((statement) => statement.trim())
-    .filter(Boolean);
-
-  for (const statement of statements) {
-    await client.execute(statement);
-  }
-
-  client.close();
-}
-
-await applyMigrations();
+afterAll(async () => {
+  await closeDatabaseConnection();
+});

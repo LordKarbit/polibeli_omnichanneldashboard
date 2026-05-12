@@ -1,118 +1,49 @@
-# Polibeli Omnichannel Dashboard
+# Polibeli Omnichannel Dashboard App
 
-Management-grade omnichannel sales analytics dashboard for GT, MT, Shopee, TikTok Shop (Kayou ID), and TikTok Shop (Kayou Card ID). The application converts raw operational files into normalized orders, order items, customers, products, sales hierarchy, geo analytics, marketplace metrics, exports, and AI query logs.
+Management-grade Next.js application for omnichannel sales analytics across GT, MT, Shopee, TikTok Shop Kayou ID, TikTok Shop Kayou Card ID, and Income & Settlement reporting.
 
-The product is built for business reporting workflows where management needs fast answers across channels, regions, products, customers, order statuses, and city-level sales coverage.
+The app normalizes uploaded files into Supabase PostgreSQL through Drizzle ORM, then powers dashboard cards, charts, filters, drilldowns, exports, Geo Sales maps, role access, and AI query logs from the database.
 
 ## Highlights
 
 - Executive overview for GMV, active GMV, orders, cancellation, channel mix, weekly movement, and alerts.
-- GT Performance module with Regional Manager visibility as the primary view, Area Manager drilldown, BD/sales leaderboard, customer retention, city ranking, SKU pareto, and transaction-level drilldown.
-- Geo Sales module with MapLibre GL JS and deck.gl, Indonesia city boundary rendering, uploaded-data-driven GMV polygons, GT district drilldown, channel filters, clear map mode, 3D building mode, right-click building detail, orbit interaction, and responsive map controls.
-- Marketplace grouping for Shopee, TikTok ID, and TikTok Card under one Marketplace category, with sub-channel drilldown where relevant.
-- Upload center for raw GT/MT and marketplace source files, wipe-data reset, batch tracking, parsing status, and normalized order counts.
-- SQLite + Drizzle ORM backend with Next.js route handlers.
-- Better Auth integration with SQLite-backed user, session, account, verification, and role permission tables.
+- GT Performance with Regional Manager comparison as the primary visibility layer, Area Manager drilldown, BD/sales leaderboard, customer retention, city ranking, SKU pareto, and transaction-level drilldown.
+- Geo Sales with MapLibre GL JS and deck.gl, Indonesia city boundary rendering, uploaded-data-driven GMV polygons, GT district drilldown, channel filters, clear map mode, 3D building mode, right-click building detail, orbit interaction, and responsive map controls.
+- Marketplace grouping for Shopee, TikTok ID, and TikTok Card under one Marketplace category, with source-specific analytics when a marketplace is selected.
+- Income & Settlement control tower for marketplace income files, payout visibility, fees, adjustments, source detail, and reconciliation views.
+- Upload Center for raw GT/MT and marketplace source files, wipe-data reset, batch tracking, parsing status, and normalized order counts.
+- Supabase PostgreSQL + Drizzle ORM backend with Next.js Route Handlers.
+- Better Auth integration with PostgreSQL-backed user, session, account, verification, and role permission tables.
 - Role-based access control for Administrator, Head, GT & MT, and Marketplace workspaces.
 - Cleaned dataset exports for downstream analysis.
-- AI insight logging layer for chatbot questions, generated SQL metadata, chart suggestions, result counts, latency, and error tracking.
+- AI insight logging layer for chatbot questions, generated SQL metadata, chart suggestions, result counts, latency, and errors.
 
 ## Supported Data Sources
 
 | Source | Expected file type | Notes |
 | --- | --- | --- |
-| GT | CSV or Excel exported raw dashboard data | Rows where `bdcity` is not `Agency`; province uses `recipient addressprovince`; city uses `recipient addresscity`; district uses `recipient addressarea`; BD/sales uses `BD bd name`; Regional Manager uses `Regional Manager`. |
-| MT | CSV or Excel exported raw dashboard data | Rows where `bdcity` is `Agency`; province uses `recipient addressprovince`; city uses `recipient addresscity`. |
-| Shopee | Excel order export | Normalized as Marketplace / Shopee. |
-| TikTok Shop (Kayou ID) | CSV order export | Normalized as Marketplace / TikTok ID. |
-| TikTok Shop (Kayou Card ID) | CSV order export | Normalized as Marketplace / TikTok Card. |
+| GT + MT | CSV or Excel exported raw dashboard data | GT rows use `bdcity <> "Agency"`; MT rows use `bdcity = "Agency"`. Province uses `recipient addressprovince`; city uses `recipient addresscity`; district uses `recipient addressarea`; BD/sales uses `BD bd name`; Regional Manager uses `Regional Manager`. |
+| Shopee orders | Excel order export | Normalized as Marketplace / Shopee. |
+| Shopee income | Excel income export | Used only in Income & Settlement. |
+| TikTok Shop Kayou ID orders | CSV or Excel order export | Normalized as Marketplace / TikTok ID. |
+| TikTok Shop Kayou ID income | Excel income export | Used only in Income & Settlement. |
+| TikTok Shop Kayou Card ID orders | CSV or Excel order export | Normalized as Marketplace / TikTok Card. |
+| TikTok Shop Kayou Card ID income | Excel income export | Used only in Income & Settlement. |
 
 GMV for GT and MT is computed from SKU GMV fields at item level. Giveaway and POSM SKUs such as Scratch Card, Poster POSM, and MLBB Display Rack are excluded from reporting metrics.
 
-## Core Modules
-
-### Executive Overview
-
-- Total booked GMV, active GMV, refunds, orders, active orders, and cancellation rate.
-- Channel grouping into GT, MT, and Marketplace.
-- Marketplace aggregates Shopee, TikTok Shop (Kayou ID), and TikTok Shop (Kayou Card ID).
-- Global filters are staged: expanding the filter card lets users select detailed filters, then apply or reset them explicitly.
-
-### GT Performance
-
-- Regional Manager Comparison as a large responsive donut plus ranked detail panel.
-- Clickable regional slices and rows for drilldown.
-- Area Manager GMV command chart.
-- BD/sales leaderboard based on `BD bd name`.
-- Customer retention analytics for one-time and repeat buyers.
-- City demand ranking and GT SKU pareto.
-- Transaction drilldown by RM, AM, BD/sales, city, customer, and date.
-
-### Geo Sales
-
-- Indonesia GMV Boundary Map with MapLibre GL JS and deck.gl.
-- Dynamic city boundaries generated from `VILLAGE-SUB-DISTRICT BOUNDARIES.kml`.
-- Only boundaries with available GMV are shown.
-- Hover tooltip shows total GMV and GMV by channel.
-- Left click opens detailed city transaction popup.
-- GT-only mode can drill from city into district-level boundary and heat intensity.
-- Channel filter supports GT, MT, and Marketplace; Marketplace can split into Shopee, TikTok ID, and TikTok Card.
-- Toggle supports GMV or cancellation value heat basis for Marketplace views.
-- Optional 3D building mode uses OpenFreeMap vector tiles with MapLibre `fill-extrusion`.
-- When 3D mode is active, right-clicking a building opens building/address detail through the authenticated reverse-geocode helper.
-- Middle mouse drag, or holding `O` while dragging, enables orbit-style bearing and pitch interaction in 3D mode.
-
-### Upload Center
-
-- Upload raw operational files.
-- Replace channel data with new uploads and wipe existing data when a clean reload is needed.
-- Track upload batches, raw files, raw order lines, parsing status, normalized orders, and normalized items.
-- Refresh analytics cache after new uploads so dashboards use the latest data.
-
-### AI Insight Center
-
-- Chatbot interface for sales questions.
-- Logs questions, generated SQL metadata, filter context, result size, latency, status, and chart suggestions.
-- Designed to support auditability before wider production AI query execution.
-
 ## Backend Architecture
 
-The backend is implemented with Next.js App Router route handlers, Drizzle ORM, libSQL SQLite, and Better Auth.
+The backend is implemented with:
 
-### Main technologies
+- Next.js 16 App Router route handlers.
+- Drizzle ORM using PostgreSQL schema and migrations.
+- Supabase PostgreSQL for production runtime data.
+- Better Auth with PostgreSQL adapter provider `pg`.
+- PGlite only for local test/build fallback when no database URL is available.
+- XLSX/CSV parsing and normalization services under `src/server/ingestion`.
 
-- Next.js 16 App Router
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- ECharts
-- MapLibre GL JS
-- deck.gl
-- Drizzle ORM
-- SQLite through `@libsql/client`
-- Better Auth
-- XLSX parser
-
-### Database
-
-Default local database:
-
-```bash
-data/omnichannel.sqlite
-```
-
-Override with:
-
-```bash
-DATABASE_URL=file:./data/omnichannel.sqlite
-DATABASE_AUTH_TOKEN=
-DRIZZLE_LOG=false
-BETTER_AUTH_SECRET=replace-with-a-secure-secret
-BETTER_AUTH_URL=http://localhost:3000
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-### Schema coverage
+### Database Schema Coverage
 
 The Drizzle schema includes:
 
@@ -125,16 +56,109 @@ The Drizzle schema includes:
 
 Deduplication is enforced through order keys, item hashes, file hashes, row hashes, and the `dedupe_keys` table.
 
+## Environment
+
+Create `.env.local` from `.env.example`.
+
+```bash
+cp .env.example .env.local
+```
+
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+Required Supabase/PostgreSQL variables:
+
+```bash
+DATABASE_URL="postgresql://postgres.<project-ref>:<password>@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_DATABASE_URL="postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres"
+# POSTGRES_URL_NON_POOLING can also be used for the direct migration connection on Vercel/Supabase setups.
+POSTGRES_SSL=require
+POSTGRES_PREPARE=false
+DRIZZLE_LOG=false
+BETTER_AUTH_SECRET="replace-with-a-long-random-secret"
+BETTER_AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+Guidance:
+
+- `DATABASE_URL` is used by the running Next.js app.
+- `DIRECT_DATABASE_URL` is used by Drizzle migrations and should use the direct Supabase database URL.
+- `POSTGRES_URL_NON_POOLING` is also supported as a direct migration URL when your deployment platform provides it.
+- `POSTGRES_PREPARE=false` avoids prepared-statement problems with Supabase poolers.
+- `POSTGRES_SSL=require` should be used for hosted Supabase.
+- In production runtime, a real PostgreSQL connection string is required.
+- During local build/test without `DATABASE_URL`, the app can use in-memory PGlite so CI and `next build` do not accidentally depend on a developer machine database.
+
+Optional AI chatbot LLM mode:
+
+```bash
+OPENAI_API_KEY=sk-your-key
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+OpenAI-compatible provider mode:
+
+```bash
+LLM_API_KEY=your-provider-key
+LLM_API_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4.1-mini
+LLM_PROVIDER=openai-compatible
+```
+
+Without an LLM key, `/api/ai/ask` uses the local semantic fallback.
+
+## Getting Started
+
+```bash
+npm install
+npm run db:migrate
+npm run dev
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+## Migrating Legacy SQLite Data
+
+Older local builds used SQLite. If you have existing uploaded data in that database, migrate it into Supabase PostgreSQL:
+
+```bash
+npm run db:migrate
+npm run db:migrate:sqlite -- --dry-run
+npm run db:migrate:sqlite -- --truncate
+```
+
+Migration variables:
+
+```bash
+SQLITE_DATABASE_URL=file:./data/omnichannel.sqlite
+DIRECT_DATABASE_URL="postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres"
+POSTGRES_SSL=require
+MIGRATION_BATCH_SIZE=500
+```
+
+Use `--dry-run` first. Use `--truncate` only when the Supabase target should be cleared before importing legacy rows.
+
 ## API Routes
 
 | Route | Purpose |
 | --- | --- |
-| `GET /api/health` | Health check. |
+| `GET /api/health` | PostgreSQL health check. |
 | `POST /api/ingest/files` | Upload and parse raw CSV/XLS/XLSX files. |
 | `POST /api/ingest/wipe` | Wipe all uploaded and normalized dashboard data. |
-| `GET /api/analytics/summary` | Dashboard analytics payload used by all modules. |
+| `GET /api/analytics/summary` | Dashboard analytics payload used by modules. |
+| `GET /api/analytics/income` | Income & Settlement analytics payload. |
+| `GET /api/analytics/filter-options` | Filter option payload. |
 | `GET /api/orders` | Normalized order listing. |
-| `GET /api/orders/[orderKey]` | Single-order detail. |
+| `GET /api/orders/[orderKey]` | Single order and SKU-level detail. |
 | `GET /api/raw/files/[fileId]/lines` | Raw line inspection for an uploaded file. |
 | `GET /api/exports/cleaned` | Download cleaned normalized dataset. |
 | `GET /api/upload/batches` | Upload batch metadata. |
@@ -153,75 +177,19 @@ Deduplication is enforced through order keys, item hashes, file hashes, row hash
 ## Project Structure
 
 ```text
-app/
-  src/app/(dashboard)/        Dashboard pages and layout
-  src/app/api/                Next.js route handlers
-  src/components/charts/      ECharts wrapper
-  src/components/geo/         MapLibre + deck.gl geo map
-  src/components/layout/      Header, sidebar, route loading overlay
-  src/components/ui/          Shared UI primitives and cards
-  src/lib/                    Formatting, download, dashboard client, chart config
-  src/server/analytics/       Analytics aggregation layer
-  src/server/db/              Drizzle schema and database client
-  src/server/ingestion/       Upload parsing and normalization
-  drizzle/                    Generated migrations
-  public/data/                Geo boundary and basemap assets
-  scripts/                    Boundary and basemap generation scripts
-```
-
-## Getting Started
-
-### 1. Install dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure environment
-
-Create `.env.local` for local development:
-
-```bash
-DATABASE_URL=file:./data/omnichannel.sqlite
-BETTER_AUTH_SECRET=replace-with-a-secure-secret
-BETTER_AUTH_URL=http://localhost:3000
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-Optional AI chatbot LLM mode:
-
-```bash
-OPENAI_API_KEY=sk-your-key
-OPENAI_MODEL=gpt-4.1-mini
-```
-
-The chatbot is hybrid by design. When `OPENAI_API_KEY`, `LLM_API_KEY`, `OPENAI_API_TOKEN`, or `LLM_API_TOKEN` is present, `/api/ai/ask` uses the configured LLM API to rewrite backend analytics into a more natural business answer. Without those variables, it automatically uses the local semantic fallback, so the chatbot still works without external API calls.
-
-For OpenAI-compatible providers, use:
-
-```bash
-LLM_API_KEY=your-provider-key
-LLM_API_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-4.1-mini
-LLM_PROVIDER=openai-compatible
-```
-
-### 3. Run database migrations
-
-```bash
-npm run db:migrate
-```
-
-### 4. Start development server
-
-```bash
-npm run dev
-```
-
-Open:
-
-```text
-http://localhost:3000
+src/app/(dashboard)/        Dashboard pages and layout
+src/app/api/                Next.js route handlers
+src/components/charts/      ECharts wrapper
+src/components/geo/         MapLibre + deck.gl geo map
+src/components/layout/      Header, sidebar, route loading overlay
+src/components/ui/          Shared UI primitives and cards
+src/lib/                    Formatting, download, dashboard client, chart config
+src/server/analytics/       Analytics aggregation layer
+src/server/db/              Drizzle PostgreSQL schema and database client
+src/server/ingestion/       Upload parsing and normalization
+drizzle/                    Generated PostgreSQL migrations
+public/data/                Geo boundary and basemap assets
+scripts/                    Boundary, basemap, and migration scripts
 ```
 
 ## Upload and QA Flow
@@ -232,9 +200,10 @@ http://localhost:3000
 4. Upload Shopee order export.
 5. Upload TikTok Shop Kayou ID export.
 6. Upload TikTok Shop Kayou Card ID export.
-7. Confirm normalized orders and normalized items are created.
-8. Visit Executive Overview, GT Performance, Geo Sales, Marketplace, SKU, Customers, Operations, and Data Quality.
-9. Use global filters, drilldowns, map interactions, exports, and AI questions to validate reporting behavior.
+7. Upload income files for Shopee, TikTok ID, and TikTok Card when settlement reporting is needed.
+8. Confirm normalized orders and normalized items are created.
+9. Visit Executive Overview, GT Performance, Geo Sales, Marketplace, SKU, Customers, Operations, and Data Quality.
+10. Use filters, drilldowns, map interactions, exports, and AI questions to validate reporting behavior.
 
 Recommended QA checks:
 
@@ -261,7 +230,7 @@ The dashboard is installable as a Progressive Web App on supported desktop and m
 - API routes remain network-only so uploads, authentication, normalization, exports, and analytics always use fresh backend data.
 - Static app assets, icons, geo assets, and previously visited pages are cached for faster repeat loading.
 
-For a production PWA check, run:
+For a production PWA check:
 
 ```bash
 npm run build
@@ -298,27 +267,28 @@ At close zoom levels, the map can render optional 3D building extrusions. Buildi
 | `npm run build` | Build production bundle. |
 | `npm run start` | Start production server after build. |
 | `npm run lint` | Run ESLint. |
-| `npm run db:generate` | Generate Drizzle migration files. |
-| `npm run db:migrate` | Apply Drizzle migrations. |
+| `npm test -- --run` | Run Vitest suite. |
+| `npm run db:generate` | Generate Drizzle PostgreSQL migration files. |
+| `npm run db:migrate` | Apply Drizzle PostgreSQL migrations. |
+| `npm run db:push` | Push schema directly during development. Prefer migrations for production. |
 | `npm run db:studio` | Open Drizzle Studio. |
+| `npm run db:migrate:sqlite` | Copy legacy SQLite data into Supabase PostgreSQL. |
 
 ## Production Notes
 
 - Use a strong `BETTER_AUTH_SECRET` in production.
 - Set `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, and `BETTER_AUTH_TRUSTED_ORIGINS` to the real deployment origin. For Cloudflared, include the exact tunnel origin instead of using wildcards.
-- Do not commit `.env*`, `data/*.sqlite`, `.next`, or local dev logs.
-- Use persistent storage for SQLite or migrate to managed libSQL/Turso by changing `DATABASE_URL` and `DATABASE_AUTH_TOKEN`.
+- Use Supabase environment variables through deployment secrets, not committed files.
+- Keep `POSTGRES_PREPARE=false` when using Supabase poolers.
 - Upload, wipe, export, order detail, AI, user, and role endpoints require authenticated role permissions and reject cross-origin mutations.
 - Review AI SQL execution rules before enabling unrestricted natural-language querying in production.
 
 ## Current Status
 
-The app has been validated with:
+Validate the workspace with:
 
 ```bash
 npm run lint
 npm run build
 npm test -- --run
 ```
-
-All commands pass in the current workspace.

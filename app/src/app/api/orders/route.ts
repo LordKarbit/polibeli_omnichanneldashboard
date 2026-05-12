@@ -44,7 +44,7 @@ function existsItemLike(pattern: string) {
     select 1
     from order_items oi
     where oi.order_id = ${normalizedOrders.id}
-      and lower(coalesce(oi.source_sku_code, '') || ' ' || coalesce(oi.source_product_name, '') || ' ' || coalesce(oi.raw_item_snapshot, '')) like ${pattern} escape '\'
+      and lower(coalesce(oi.source_sku_code, '') || ' ' || coalesce(oi.source_product_name, '') || ' ' || coalesce(oi.raw_item_snapshot::text, '')) like ${pattern} escape '\'
   )`;
 }
 

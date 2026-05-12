@@ -1,23 +1,29 @@
 # Polibeli Omnichannel Dashboard
 
-Enterprise-grade omnichannel business intelligence dashboard for GT, MT / Agency, Shopee, TikTok Shop Kayou ID, TikTok Shop Kayou Card ID, and settlement reporting.
+Enterprise-grade omnichannel business intelligence dashboard for GT, MT / Agency, Shopee, TikTok Shop Kayou ID, TikTok Shop Kayou Card ID, marketplace settlement reporting, customer retention, and Geo Sales mapping.
 
-The application converts raw operational marketplace and field-sales exports into normalized orders, SKU-level order items, cleaned customer/product/location data, role-scoped dashboards, drilldown analytics, geospatial GMV maps, downloadable cleaned datasets, and AI-assisted business answers.
+The application converts uploaded operational files into normalized PostgreSQL data: orders, SKU-level order items, customers, products, sales hierarchy, marketplace facts, income settlement facts, geo boundaries, cleaned exports, and AI query logs. Every KPI, chart, table, popup, filter, and export is designed to be driven by the uploaded data stored in Supabase PostgreSQL, not by mock data.
 
-> The Next.js application lives in the `app/` directory. Run all npm commands from `app/`.
+> The Next.js application lives in `app/`. Run npm commands from `app/`.
 
 ## Executive Summary
 
-Polibeli Omnichannel Dashboard is designed for management-level commercial reporting where leadership needs one reliable view of channel performance, regional execution, customer retention, marketplace order health, income settlement, and geo sales coverage.
+Polibeli Omnichannel Dashboard is built for management-level reporting where leadership needs one reliable view of commercial performance across GT, MT, marketplaces, settlement, regional execution, customer retention, and city-level sales coverage.
 
-The system is built around uploaded operational files. Every KPI, chart, table, popup, filter, and export is intended to come from the normalized SQLite database after ingestion, not from mock data.
+The current backend uses:
+
+- Next.js Route Handlers for API endpoints.
+- Drizzle ORM with PostgreSQL schema and migrations.
+- Supabase PostgreSQL as the production database.
+- Better Auth with PostgreSQL-backed user, session, account, verification, and role permission tables.
+- PGlite only as a local build/test fallback when no database URL is provided.
 
 ## Key Capabilities
 
 - Executive Overview for booked GMV, active GMV, orders, cancellations, channel mix, trend movement, risk alerts, and top performers.
 - GT Performance centered on Regional Manager comparison, Area Manager drilldown, BD/sales visibility, customer retention, city ranking, SKU pareto, and transaction details.
 - MT / Agency reporting separated from GT by the raw `bdcity = Agency` rule.
-- Marketplace Sales Performance grouping Shopee, TikTok ID, and TikTok Card into one Marketplace lens with source-specific analytics when a marketplace is selected.
+- Marketplace Sales Performance grouping Shopee, TikTok ID, and TikTok Card into one Marketplace lens with source-specific layouts when a marketplace is selected.
 - Income & Settlement control center for Shopee, TikTok Shop, and Tokopedia-related purchase channels, kept separate from Sales Performance release-payment data.
 - Geo Sales map built with MapLibre GL JS and deck.gl, dynamic GMV city boundaries, GT district drilldown, channel filters, cancellation heat basis, clear map mode, exportable map screenshots, and optional 3D buildings.
 - Upload Center with channel-specific replacement semantics: uploading a new file for a channel replaces the previous data for that channel, while GT and MT share one raw dashboard upload source.
@@ -61,8 +67,7 @@ Marketplace Sales Performance keeps order sales metrics separate from settlement
 
 - Sales Performance focuses on booked GMV, active GMV, order status, cancellation, products, buyers, and operational performance.
 - Income & Settlement focuses on released amount, settlement reconciliation, fees, adjustments, and payout visibility.
-
-Shopee released amount logic is intentionally kept in Income & Settlement. Shopee order exports can reconstruct a payment-like amount from unique order payment, row-level Shopee voucher support, and unique buyer shipping payment, but that value should not pollute the Sales Performance tab.
+- Shopee released amount and marketplace income-file settlement values are intentionally shown only inside Income & Settlement.
 
 ## Geo Sales Map
 
@@ -95,11 +100,11 @@ Root
     src/components/             UI, layout, charts, PWA, and geo components
     src/lib/                    Client utilities, formatters, RBAC, chart config
     src/server/analytics/       Analytics aggregation
-    src/server/db/              Drizzle schema and database client
+    src/server/db/              Drizzle PostgreSQL schema and database client
     src/server/ingestion/       Upload parsing and normalization
-    drizzle/                    Drizzle migrations
+    drizzle/                    Drizzle PostgreSQL migrations
     public/                     PWA assets and generated geo assets
-    scripts/                    Data preparation scripts
+    scripts/                    Data preparation and migration scripts
 ```
 
 ## Technology Stack
@@ -111,15 +116,15 @@ Root
 - ECharts
 - MapLibre GL JS
 - deck.gl
+- Supabase PostgreSQL
 - Drizzle ORM
-- SQLite / libSQL through `@libsql/client`
 - Better Auth
 - XLSX parsing
 - PWA manifest and service worker
 
 ## Database Scope
 
-The schema covers:
+The PostgreSQL schema covers:
 
 - Authentication: users, sessions, accounts, verification records.
 - Authorization: role permissions.
@@ -130,6 +135,117 @@ The schema covers:
 - Reporting and audit: metrics snapshots, cleaned dataset exports, AI query logs, source field mappings, dedupe keys.
 
 Deduplication is supported through order keys, file hashes, row hashes, item hashes, and persisted dedupe keys.
+
+## Supabase PostgreSQL Setup
+
+Create a Supabase project, then copy both connection strings from Supabase Project Settings > Database:
+
+- Transaction pooler or session pooler connection for the app runtime.
+- Direct connection for migrations.
+
+Create `app/.env.local`:
+
+```bash
+DATABASE_URL="postgresql://postgres.<project-ref>:<password>@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_DATABASE_URL="postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres"
+# POSTGRES_URL_NON_POOLING can also be used for the direct migration connection on Vercel/Supabase setups.
+POSTGRES_SSL=require
+POSTGRES_PREPARE=false
+DRIZZLE_LOG=false
+BETTER_AUTH_SECRET="replace-with-a-long-random-secret"
+BETTER_AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+Notes:
+
+- `DATABASE_URL` is used by the running app.
+- `DIRECT_DATABASE_URL` is used by Drizzle migration commands and should point to the direct Supabase database URL.
+- `POSTGRES_URL_NON_POOLING` is also supported as a direct migration URL when your deployment platform provides it.
+- `POSTGRES_PREPARE=false` is the default and is safer for Supabase poolers.
+- `POSTGRES_SSL=require` is the expected production setting.
+- For local tests and production build steps without a database URL, the app falls back to in-memory PGlite. Do not rely on that fallback for real runtime data.
+
+Optional LLM mode for the chatbot:
+
+```bash
+OPENAI_API_KEY=sk-your-key
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+OpenAI-compatible provider mode:
+
+```bash
+LLM_API_KEY=your-provider-key
+LLM_API_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4.1-mini
+LLM_PROVIDER=openai-compatible
+```
+
+Without an LLM key, the chatbot automatically uses the local semantic fallback.
+
+## Getting Started
+
+### 1. Install dependencies
+
+```bash
+cd app
+npm install
+```
+
+### 2. Configure environment
+
+Copy the example file and fill in your Supabase credentials:
+
+```bash
+cp .env.example .env.local
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+### 3. Run migrations
+
+```bash
+npm run db:migrate
+```
+
+### 4. Start the app
+
+```bash
+npm run dev
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+## Migrating Existing SQLite Data
+
+If an older local SQLite database already contains uploaded production data, migrate it into Supabase PostgreSQL after applying migrations:
+
+```bash
+cd app
+npm run db:migrate
+npm run db:migrate:sqlite -- --dry-run
+npm run db:migrate:sqlite -- --truncate
+```
+
+Environment variables used by the migration script:
+
+```bash
+SQLITE_DATABASE_URL=file:./data/omnichannel.sqlite
+DIRECT_DATABASE_URL="postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres"
+POSTGRES_SSL=require
+MIGRATION_BATCH_SIZE=500
+```
+
+Use `--dry-run` first to validate table availability and row counts. Use `--truncate` only when the Supabase target should be reset before copying the SQLite data.
 
 ## API Surface
 
@@ -160,64 +276,6 @@ Important route handlers include:
 | `POST /api/setup/administrator` | First administrator setup. |
 | `/api/auth/[...all]` | Better Auth handler. |
 
-## Getting Started
-
-### 1. Install dependencies
-
-```bash
-cd app
-npm install
-```
-
-### 2. Configure environment
-
-Create `app/.env.local`:
-
-```bash
-DATABASE_URL=file:./data/omnichannel.sqlite
-DATABASE_AUTH_TOKEN=
-DRIZZLE_LOG=false
-BETTER_AUTH_SECRET=replace-with-a-secure-secret
-BETTER_AUTH_URL=http://localhost:3000
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-Optional LLM mode for the chatbot:
-
-```bash
-OPENAI_API_KEY=sk-your-key
-OPENAI_MODEL=gpt-4.1-mini
-```
-
-OpenAI-compatible provider mode:
-
-```bash
-LLM_API_KEY=your-provider-key
-LLM_API_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-4.1-mini
-LLM_PROVIDER=openai-compatible
-```
-
-Without an LLM key, the chatbot automatically uses the local semantic fallback.
-
-### 3. Run migrations
-
-```bash
-npm run db:migrate
-```
-
-### 4. Start the app
-
-```bash
-npm run dev
-```
-
-Open:
-
-```text
-http://localhost:3000
-```
-
 ## Scripts
 
 Run from `app/`.
@@ -229,9 +287,11 @@ Run from `app/`.
 | `npm run start` | Start production server after build. |
 | `npm run lint` | Run ESLint. |
 | `npm test -- --run` | Run Vitest suite. |
-| `npm run db:generate` | Generate Drizzle migrations. |
-| `npm run db:migrate` | Apply Drizzle migrations. |
+| `npm run db:generate` | Generate Drizzle PostgreSQL migrations. |
+| `npm run db:migrate` | Apply Drizzle PostgreSQL migrations. |
+| `npm run db:push` | Push schema directly during development. Prefer migrations for production. |
 | `npm run db:studio` | Open Drizzle Studio. |
+| `npm run db:migrate:sqlite` | Copy legacy SQLite data into Supabase PostgreSQL. |
 
 ## QA Checklist
 
@@ -241,33 +301,21 @@ Run from `app/`.
 - Confirm channel replacement semantics: a new upload for the same channel replaces previous channel data.
 - Validate booked GMV and active GMV by channel.
 - Validate Shopee released amount inside Income & Settlement only.
-- Check global filters per page and staged apply/reset behavior.
+- Check filters per page and staged apply/reset behavior.
 - Drill from dashboard cards/charts into order-level detail and SKU-level detail.
 - Validate Geo Sales city boundaries, GT district drilldown, 3D building mode, and map export.
 - Validate role scopes for Administrator, Head, GT & MT, and Marketplace.
 - Run lint, tests, and production build.
-
-## Validation Status
-
-Current workspace validation:
-
-```bash
-npm run lint
-npm test -- --run
-npm run build
-```
-
-All three commands pass.
 
 ## Deployment Notes
 
 - Use a strong `BETTER_AUTH_SECRET`.
 - Set `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, and `BETTER_AUTH_TRUSTED_ORIGINS` to the exact deployed origin.
 - For Cloudflared tunnels, include the tunnel origin in trusted origins.
-- Do not commit raw business files, uploaded source files, SQLite databases, local logs, `.env*`, `.next`, or `node_modules`.
-- Use persistent storage for SQLite, or point `DATABASE_URL` to managed libSQL/Turso for production.
+- Configure Supabase connection strings through environment variables, not committed files.
 - Keep upload, wipe, export, order detail, AI, user, and role APIs behind authenticated role permissions.
+- Do not commit raw business files, uploaded source files, local database files, local logs, `.env*`, `.next`, or `node_modules`.
 
 ## Data Privacy
 
-This repository intentionally ignores raw sample files, income/order exports, local SQLite databases, generated logs, and the original KML source file. The committed codebase should contain application code, migrations, generated lightweight assets, and documentation only.
+This repository intentionally ignores raw sample files, income/order exports, local database files, generated logs, and the original KML source file. The committed codebase should contain application code, migrations, generated lightweight assets, and documentation only.
